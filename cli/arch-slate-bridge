@@ -12,6 +12,11 @@ usage: arch-slate-bridge <command> [args]
   doctor           check every piece: PACE service, Hub patch, yabridge, bridged plugins, REAPER cache
   repatch          re-apply the Hub patch after the Hub updated itself (Install button dead again)
   update-yabridge  rebuild yabridge + yabridgectl from master (after a Wine upgrade)
+  debug on [seh]   write yabridge's trace (plugin + Wine output, every host<->plugin call) to a file;
+                   'seh' adds Wine's exception log (code, address, backtrace) for crashes. 'debug off' ends both
+  logs [n]         follow that trace; reproduce a hang in REAPER and read the last lines
+  backtrace        (sudo) while REAPER is frozen: dump the Wine side's thread stacks to backtrace-<time>.log
+  stop             shut the prefix down (Hub, telemetry sidecar, PACE service, wineserver); refuses while REAPER hosts plugins
   help             this text
 
 Logs: $(cd "$M/.." && pwd)/cah-wine.log
@@ -25,6 +30,10 @@ sync) exec "$M/sync-plugins.zsh" "$@" ;;
 doctor) exec "$M/doctor.zsh" "$@" ;;
 repatch) exec "$M/repatch-hub.zsh" "$@" ;;
 update-yabridge) exec "$M/update-yabridge.zsh" "$@" ;;
+debug) exec "$M/debug-logging.zsh" "$@" ;;
+logs) exec "$M/logs.zsh" "$@" ;;
+stop) exec "$M/stop.zsh" "$@" ;;
+backtrace) exec "$M/backtrace-sudo.zsh" "$@" ;;
 help | -h | --help) usage ;;
 *)
 	print -u2 "arch-slate-bridge: unknown command '$cmd'"

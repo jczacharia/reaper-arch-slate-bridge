@@ -32,7 +32,7 @@ for d in "${DIRS[@]}"; do
 done
 
 step "2. sync"
-run "yabridgectl sync" -- "$YCTL" sync
+run "yabridgectl sync --prune (also removes bridges for plugins uninstalled in the Hub)" -- "$YCTL" sync --prune
 run "yabridgectl status" -- "$YCTL" status
 
 step "3. result"

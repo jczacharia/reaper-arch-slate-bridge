@@ -35,6 +35,10 @@ step "1. wine + prefix"
 check "wine on PATH" "install wine" -- command -v wine
 check "prefix $WINEPREFIX" "run install/10-prefix-pace.zsh" -- test -f "$WINEPREFIX/system.reg"
 check "vcrun2022 (vcruntime140.dll)" "run install/10-prefix-pace.zsh" -- test -f "$WINEPREFIX/drive_c/windows/system32/vcruntime140.dll"
+check "GLX backend (UseEGL=N; OpenGL editors like Inf Horizon get no pixel format on EGL)" "run install/17-opengl-glx.zsh" -- \
+  sh -c "wine reg query 'HKCU\\Software\\Wine\\X11 Driver' /v UseEGL 2>/dev/null | grep -qE 'UseEGL\s+REG_SZ\s+N'"
+check "DXVK (d3d11=native; D3D-rendered editors like SSL hang on close without it)" "run install/15-dxvk.zsh" -- \
+  sh -c "wine reg query 'HKCU\\Software\\Wine\\DllOverrides' /v '*d3d11' 2>/dev/null | grep -q native"
 
 step "2. PACE / iLok (what the Hub checks before it does anything)"
 check "service PACELicenseDServices RUNNING" "run install/10-prefix-pace.zsh" -- \
@@ -60,7 +64,14 @@ if pgrep -af 'yabridge-host' | grep -q '/usr/bin/'; then
 	fail "a running yabridge-host comes from /usr/bin (mouse input broken) -> sudo install/00-prereqs-sudo.zsh, restart REAPER"
 fi
 
-step "5. plugins: Windows side vs bridged vs REAPER cache"
+step "5. yabridge trace (arch-slate-bridge debug on|off)"
+if systemctl --user show-environment 2>/dev/null | grep -q '^YABRIDGE_DEBUG_FILE='; then
+  log "  info  trace ON -> $(systemctl --user show-environment | sed -n 's/^YABRIDGE_DEBUG_FILE=//p') (arch-slate-bridge logs)"
+else
+  log "  info  trace off; plugin/Wine output is not kept. For hangs or crashes: arch-slate-bridge debug on"
+fi
+
+step "6. plugins: Windows side vs bridged vs REAPER cache"
 typeset -a win bridged
 # Windows VST3 is a single file or a bundle dir; prune so bundle internals are not listed
 win=("${(@f)$(find "$C/Common Files/VST3" -name '*.vst3' -prune -print 2>/dev/null | sort)}")
@@ -71,7 +82,7 @@ for p in "${win[@]}"; do
 	rel="${p#$C/Common Files/VST3/}"
 	if [ -e "$HOME/.vst3/yabridge/$rel" ]; then
 		name="${rel:t}"
-		name="${name// /_}" # REAPER keys the cache by file name with spaces as _
+		name="${name//[^A-Za-z0-9.]/_}" # REAPER keys the cache by file name, non-alphanumerics as _
 		if [ -f "$REAPER_CACHE" ] && ! grep -q "^$name=" "$REAPER_CACHE"; then
 			warn "$rel bridged, not in REAPER's plugin cache -> re-scan in REAPER"
 		else
@@ -82,6 +93,12 @@ for p in "${win[@]}"; do
 	fi
 done
 [ ${#win} -eq 0 ] && warn "no VST3 plugins in the prefix yet; install one in the Hub"
+# bridges left behind after an uninstall in the Hub: REAPER shows "does not contain a Windows VST3 module"
+for b in "${bridged[@]}"; do
+  [ -n "$b" ] || continue
+  rel="${b#$HOME/.vst3/yabridge/}"
+  [ -e "$C/Common Files/VST3/$rel" ] || fail "$rel bridged but uninstalled from the prefix -> arch-slate-bridge sync"
+done
 
 step "result"
 if [ $fails -eq 0 ]; then log "all checks passed"; else die "$fails check(s) failed; fixes are listed above"; fi

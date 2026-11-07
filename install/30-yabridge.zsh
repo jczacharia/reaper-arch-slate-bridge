@@ -63,7 +63,7 @@ run "point yabridgectl at $DEST" -- "$YCTL" set --path "$DEST"
 "$YCTL" status 2>&1 | grep -q "yabridge-host.exe: '$DEST/" || die "yabridgectl status does not resolve yabridge-host.exe from $DEST"
 mkdir -p "$VST3DIR"
 try "register $VST3DIR (ok if already added)" -- "$YCTL" add "$VST3DIR"
-run "yabridgectl sync" -- "$YCTL" sync
+run "yabridgectl sync --prune (also removes bridges for plugins uninstalled in the Hub)" -- "$YCTL" sync --prune
 run "yabridgectl status" -- "$YCTL" status
 log "In REAPER: Preferences > Plug-ins > VST, make sure ~/.vst3 is scanned, then re-scan."
 log "step 3 done"

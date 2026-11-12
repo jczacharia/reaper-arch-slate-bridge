@@ -33,8 +33,12 @@ else
 fi
 run "winetricks: windows version -> win10" -- winetricks -q win10
 run "winetricks: vcrun2022 (needed by PACE) + corefonts" -- winetricks -q vcrun2022 corefonts
+# Inno Setup installers skinned with ISSkin (sonible smart:limit, smart:EQ 4, smart:deess, prime:vocal) die with
+# "Cannot Import dll: isskin.dll" (error 126): the 32-bit isskin.dll imports MFC42.DLL, which Wine does not ship
+run "winetricks: mfc42 (ISSkin-based installers)" -- winetricks -q mfc42
 log "winetricks verbs recorded in prefix: $(tr '\n' ' ' <"$WINEPREFIX/winetricks.log" 2>/dev/null)"
 [ -f "$WINEPREFIX/drive_c/windows/system32/vcruntime140.dll" ] && log "vcruntime140.dll present" || die "vcrun2022 did not land in system32"
+[ -f "$WINEPREFIX/drive_c/windows/syswow64/mfc42.dll" ] && log "mfc42.dll present (32-bit)" || die "mfc42 did not land in syswow64"
 
 step "2. PACE License Support"
 if try "is PACELicenseDServices already running" -- sh -c 'wine sc query PACELicenseDServices 2>/dev/null | grep -q RUNNING'; then
